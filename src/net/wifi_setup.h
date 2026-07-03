@@ -5,4 +5,3 @@ struct HomeConfig { bool valid=false; float lat=0, lon=0; std::string ssid; std:
 HomeConfig wifi_begin();
 // Wipes stored WiFi + lat/lon and reboots into the portal.
 void wifi_reset();
-bool wifi_connected();

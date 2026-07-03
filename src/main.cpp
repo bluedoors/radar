@@ -19,15 +19,7 @@ static uint32_t last_poll = 0;
 static uint32_t info_since = 0;
 static std::vector<Aircraft> planes;
 
-static std::vector<AirportScreen> airports_for_home() {
-    std::vector<AirportScreen> out;
-    for (auto& a : get_airports()) {
-        float d = haversine_km(home.lat, home.lon, a.lat, a.lon);
-        float b = bearing_deg(home.lat, home.lon, a.lat, a.lon);
-        out.push_back({ a.icao.c_str(), d, b });
-    }
-    return out;
-}
+static std::vector<AirportScreen> g_airports;
 
 void setup() {
     Serial.begin(115200);
@@ -36,6 +28,13 @@ void setup() {
     screen_splash(display.canvas());
     display.push();
     home = wifi_begin();
+    if (home.valid) {
+        for (auto& a : get_airports()) {
+            float d = haversine_km(home.lat, home.lon, a.lat, a.lon);
+            float b = bearing_deg(home.lat, home.lon, a.lat, a.lon);
+            g_airports.push_back({ a.icao.c_str(), d, b });
+        }
+    }
     screen = Screen::Info;
     screen_info(display.canvas(), home.ip, home.ssid, home.lat, home.lon, home.valid);
     display.push();
@@ -49,7 +48,7 @@ void loop() {
     if (ev == ButtonEvent::Long) { wifi_reset(); return; }
 
     if (screen == Screen::Info) {
-        if (ev == ButtonEvent::Short || ev == ButtonEvent::Double) {
+        if (home.valid && (ev == ButtonEvent::Short || ev == ButtonEvent::Double)) {
             screen = Screen::Radar; last_poll = 0; info_since = 0;
         }
     } else if (screen == Screen::Radar) {
@@ -75,7 +74,7 @@ void loop() {
         if (!fresh.empty()) planes = fresh;
         auto* c = display.canvas();
         render_radar(c, planes, range);
-        render_airports(c, airports_for_home(), range);
+        render_airports(c, g_airports, range);
         display.push();
     }
 

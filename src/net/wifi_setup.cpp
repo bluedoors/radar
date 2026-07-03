@@ -36,4 +36,3 @@ void wifi_reset() {
     prefs.begin("radar", false); prefs.clear(); prefs.end();
     ESP.restart();
 }
-bool wifi_connected() { return WiFi.status() == WL_CONNECTED; }
