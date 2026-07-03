@@ -19,13 +19,33 @@ static const int   RANGE_COUNT = 4;
 #define API_HOST "opendata.adsb.fi"
 #define AP_NAME  "PlaneRadar-setup"
 #define FW_VERSION "0.1.0"
-// ---- Colours (RGB565) ----
-#define COL_FIELD   0x0862
-#define COL_RING    0x0A6B
-#define COL_N       0x7EBF
-#define COL_COMMERC 0xF9E7
-#define COL_VFR     0xFE67
-#define COL_HELO    0x3FF1
-#define COL_UNKNOWN 0x8536
-#define COL_VECTOR  0xFAFC
-#define COL_AIRPORT 0x05B9
+// ---- Colours ----
+// The offscreen canvas is an 8-bit PALETTE sprite (1 byte/pixel = 57,600 B) rather
+// than 16-bit (115,200 B), because the WROOM-32 has no PSRAM and cannot allocate a
+// single contiguous 115 KB block (largest free block ~114 KB). In palette mode the
+// LovyanGFX drawing primitives take the palette INDEX as their colour argument, so
+// COL_* are indices here; RADAR_PALETTE maps each index to its real RGB565 colour and
+// is loaded into the sprite in Display::begin().
+#define COL_FIELD   0   // navy   #03121f
+#define COL_RING    1   // grid   #0a3a5c
+#define COL_N       2   // blue   #7fd4ff
+#define COL_COMMERC 3   // red    #ff3b3b
+#define COL_VFR     4   // amber  #ffcf3b
+#define COL_HELO    5   // green  #3bff8f
+#define COL_UNKNOWN 6   // grey   #7f9bb0
+#define COL_VECTOR  7   // magenta#ff5be0
+#define COL_AIRPORT 8   // cyan   #00b4c8
+
+#include <cstdint>
+static const uint16_t RADAR_PALETTE[] = {
+    0x0862,  // 0 FIELD
+    0x0A6B,  // 1 RING
+    0x7EBF,  // 2 N
+    0xF9E7,  // 3 COMMERC
+    0xFE67,  // 4 VFR
+    0x3FF1,  // 5 HELO
+    0x8536,  // 6 UNKNOWN
+    0xFAFC,  // 7 VECTOR
+    0x05B9,  // 8 AIRPORT
+};
+static const int RADAR_PALETTE_COUNT = 9;

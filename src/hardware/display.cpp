@@ -47,8 +47,15 @@ void Display::begin() {
     ledcSetup(BL_LEDC_CHANNEL, BL_LEDC_FREQ, BL_LEDC_RES);
     ledcAttachPin(PIN_BL, BL_LEDC_CHANNEL);
     set_backlight(BL_DEFAULT_DUTY);
-    g_canvas.setColorDepth(16);
+    // 8-bit palette canvas: 240x240x1 = 57,600 B (a 16-bit canvas needs 115,200 B,
+    // which will not fit in the WROOM-32's largest contiguous free block ~114 KB).
+    g_canvas.setColorDepth(lgfx::color_depth_t::palette_8bit);
     g_canvas.createSprite(240, 240);
+    for (int i = 0; i < RADAR_PALETTE_COUNT; ++i) {
+        // Wrap in rgb565_t so LovyanGFX converts from 565 (a bare uint16_t would be
+        // misread as a 24-bit value and come out near-black).
+        g_canvas.setPaletteColor(i, lgfx::rgb565_t((uint16_t)RADAR_PALETTE[i]));
+    }
 }
 
 void Display::set_backlight(uint8_t duty) {
