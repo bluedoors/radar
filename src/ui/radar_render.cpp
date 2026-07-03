@@ -39,14 +39,14 @@ void render_radar(LGFX_Sprite* c, const std::vector<Aircraft>& aircraft, float r
     c->setTextColor(COL_N); c->drawString("N", 116, 4);
     c->fillCircle(120,120,2, COL_N);
 
-    // Range label (km) on each ring, placed just inside the ring on the SE diagonal so it
-    // sits on the field (not over the crosshair) and never collides with the "N" marker.
+    // Range label (km) on each ring along the NORTH axis: aircraft/airports near this
+    // location are mostly to the south, so the top of the radar stays clear. Labels sit
+    // just inside each ring, nudged a few px right of the vertical crosshair.
     c->setTextColor(COL_N);
     for (int i = 0; i < 3; ++i) {
         char lbl[8];
         ring_label(lbl, sizeof(lbl), range_km * (float)(i + 1) / 3.0f);
-        int off = (int)(ring_r[i] * 0.60f);   // along the SE 45° diagonal
-        c->drawString(lbl, 120 + off, 120 + off - 4);
+        c->drawString(lbl, 124, 120 - ring_r[i] + 3);   // just below/inside the ring, north side
     }
 
     for (const auto& a : aircraft) {

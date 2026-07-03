@@ -10,16 +10,44 @@
 #include "model/geo.h"
 #include "data/airports.h"
 
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/semphr.h>
+
 enum class Screen { Splash, Info, Radar };
 static Screen screen = Screen::Splash;
 static ButtonFsm button;
 static HomeConfig home;
 static int range_idx = 2;               // default 25 km (RANGE_PRESETS_KM[2])
-static uint32_t last_poll = 0;
 static uint32_t info_since = 0;
-static std::vector<Aircraft> planes;
+static std::vector<Aircraft> planes;    // owned by the render loop (core 1)
 
 static std::vector<AirportScreen> g_airports;
+
+// ---- Cross-core aircraft handoff -------------------------------------------------
+// The HTTPS fetch is slow and blocking, so it runs on core 0 in its own task. It writes
+// results into g_shared under a mutex; the render loop (core 1) copies them out when
+// fresh. This keeps the button/render loop responsive at all times — a press is never
+// swallowed by an in-flight network request.
+static SemaphoreHandle_t g_lock;
+static std::vector<Aircraft> g_shared;
+static volatile bool g_have_fresh = false;
+
+static void fetch_task(void*) {
+    for (;;) {
+        // Range is display-only; the fetch always uses the widest preset so the cached
+        // set covers every range the user might cycle to without needing a re-fetch.
+        float fetch_km = RANGE_PRESETS_KM[RANGE_COUNT - 1];
+        auto fresh = adsb_fetch(home.lat, home.lon, fetch_km);
+        if (!fresh.empty()) {
+            xSemaphoreTake(g_lock, portMAX_DELAY);
+            g_shared = std::move(fresh);
+            g_have_fresh = true;
+            xSemaphoreGive(g_lock);
+        }
+        vTaskDelay(pdMS_TO_TICKS(POLL_INTERVAL_MS));
+    }
+}
 
 void setup() {
     Serial.begin(115200);
@@ -27,13 +55,20 @@ void setup() {
     display.begin();
     screen_splash(display.canvas());
     display.push();
-    home = wifi_begin();
+    // Show setup instructions on the panel while the captive portal is open.
+    home = wifi_begin([](const std::string& ap, const std::string& ip) {
+        screen_portal(display.canvas(), ap, ip);
+        display.push();
+    });
     if (home.valid) {
         for (auto& a : get_airports()) {
             float d = haversine_km(home.lat, home.lon, a.lat, a.lon);
             float b = bearing_deg(home.lat, home.lon, a.lat, a.lon);
             g_airports.push_back({ a.icao.c_str(), d, b });
         }
+        // Start the background fetch task on core 0 (loop()/render run on core 1).
+        g_lock = xSemaphoreCreateMutex();
+        xTaskCreatePinnedToCore(fetch_task, "fetch", 8192, nullptr, 1, nullptr, 0);
     }
     screen = Screen::Info;
     screen_info(display.canvas(), home.ip, home.ssid, home.lat, home.lon, home.valid);
@@ -50,23 +85,34 @@ static void draw_radar() {
     display.push();
 }
 
+// Pull newly-fetched aircraft from the background task, if any arrived. Returns true if
+// `planes` was updated (so the caller can redraw). Non-blocking.
+static bool consume_fresh() {
+    if (!g_have_fresh) return false;
+    if (xSemaphoreTake(g_lock, 0) != pdTRUE) return false;  // task holds it; try next loop
+    planes = g_shared;
+    g_have_fresh = false;
+    xSemaphoreGive(g_lock);
+    return true;
+}
+
 void loop() {
     uint32_t now = millis();
     bool pressed = (digitalRead(PIN_BOOT) == LOW);
     ButtonEvent ev = button.update(pressed, now);
 
-    // Very-long hold: wipe config + reopen portal (fires at ~4 s while held).
+    // Very-long hold (~8 s): wipe config + reopen portal.
     if (ev == ButtonEvent::LongReset) { wifi_reset(); return; }
 
     if (screen == Screen::Info) {
         // Short press starts the radar (only meaningful when WiFi is configured).
         if (home.valid && ev == ButtonEvent::Short) {
-            screen = Screen::Radar; last_poll = 0; info_since = 0;
+            screen = Screen::Radar; info_since = 0;
+            draw_radar();
         }
     } else if (screen == Screen::Radar) {
         if (ev == ButtonEvent::Short) {
-            // Instant range change — data is range-independent, so just rescale
-            // and redraw the cached aircraft. No fetch, no blocking, no missed presses.
+            // Instant range change — just rescale and redraw the cached aircraft.
             range_idx = (range_idx + 1) % RANGE_COUNT;
             draw_radar();
         } else if (ev == ButtonEvent::LongPeek) {
@@ -78,19 +124,16 @@ void loop() {
 
     // Auto-return from peeked info screen after 5 000 ms
     if (screen == Screen::Info && info_since && (now - info_since) > 5000) {
-        screen = Screen::Radar; info_since = 0; last_poll = 0;
-        draw_radar();   // repaint immediately with current data
-    }
-
-    if (screen == Screen::Radar && (last_poll == 0 || now - last_poll >= POLL_INTERVAL_MS)) {
-        last_poll = now;
-        float range = RANGE_PRESETS_KM[range_idx];
-        auto fresh = adsb_fetch(home.lat, home.lon, range);
-        if (!fresh.empty()) planes = fresh;
+        screen = Screen::Radar; info_since = 0;
         draw_radar();
     }
 
-    delay(20);
+    // Redraw when the background task delivers fresh aircraft.
+    if (screen == Screen::Radar && consume_fresh()) {
+        draw_radar();
+    }
+
+    delay(20);   // ~50 Hz button polling — always responsive, never blocked on network
 }
 #else
 // Native / unit-test build: provide a no-op entry point so the

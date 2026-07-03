@@ -50,16 +50,27 @@ void test_long_peek() {
     TEST_ASSERT_EQUAL(ButtonEvent::None, b.update(false, 1700));
 }
 
-// Hold to 4 s -> LongPeek at 1.5 s, then LongReset at 4 s (each once), no Short on release.
+// Hold to 8 s -> LongPeek at 1.5 s, then LongReset at 8 s (each once), no Short on release.
 void test_long_reset() {
     ButtonFsm b;
     b.update(true, 0);
-    auto held = poll(b, true, 10, 4100);
+    auto held = poll(b, true, 10, 8100);
     int peeks=0, resets=0;
     for (auto e: held){ if(e==ButtonEvent::LongPeek)peeks++; if(e==ButtonEvent::LongReset)resets++; }
     TEST_ASSERT_EQUAL(1, peeks);
     TEST_ASSERT_EQUAL(1, resets);
-    TEST_ASSERT_EQUAL(ButtonEvent::None, b.update(false, 4200));
+    TEST_ASSERT_EQUAL(ButtonEvent::None, b.update(false, 8200));
+}
+
+// A hold between peek (1.5s) and reset (8s) emits LongPeek only, never LongReset.
+void test_hold_between_peek_and_reset() {
+    ButtonFsm b;
+    b.update(true, 0);
+    auto held = poll(b, true, 10, 5000);   // 5 s: past peek, well before reset
+    int peeks=0, resets=0;
+    for (auto e: held){ if(e==ButtonEvent::LongPeek)peeks++; if(e==ButtonEvent::LongReset)resets++; }
+    TEST_ASSERT_EQUAL(1, peeks);
+    TEST_ASSERT_EQUAL(0, resets);
 }
 
 // A press just under the peek threshold is a Short, not a LongPeek.
@@ -77,6 +88,7 @@ int main(int,char**){
     RUN_TEST(test_two_taps_two_shorts);
     RUN_TEST(test_long_peek);
     RUN_TEST(test_long_reset);
+    RUN_TEST(test_hold_between_peek_and_reset);
     RUN_TEST(test_just_under_peek_is_short);
     return UNITY_END();
 }

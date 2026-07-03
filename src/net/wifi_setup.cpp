@@ -6,7 +6,7 @@
 
 static Preferences prefs;
 
-HomeConfig wifi_begin() {
+HomeConfig wifi_begin(PortalCallback on_portal) {
     HomeConfig cfg;
     prefs.begin("radar", false);
     float lat = prefs.getFloat("lat", 1000.0f);
@@ -19,6 +19,13 @@ HomeConfig wifi_begin() {
     WiFiManagerParameter p_lat("lat","Latitude",latbuf,15);
     WiFiManagerParameter p_lon("lon","Longitude",lonbuf,15);
     wm.addParameter(&p_lat); wm.addParameter(&p_lon);
+
+    // When the portal opens, tell the caller so it can show setup instructions on-screen.
+    if (on_portal) {
+        wm.setAPCallback([on_portal](WiFiManager* w) {
+            on_portal(AP_NAME, std::string(WiFi.softAPIP().toString().c_str()));
+        });
+    }
 
     bool ok = wm.autoConnect(AP_NAME);   // blocks in portal until connected
     if (ok) {
