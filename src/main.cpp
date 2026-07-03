@@ -40,22 +40,36 @@ void setup() {
     display.push();
 }
 
+// Re-render the radar frame from the aircraft/airports already in memory (no network).
+// Used both after a fresh poll and after an instant range change.
+static void draw_radar() {
+    float range = RANGE_PRESETS_KM[range_idx];
+    auto* c = display.canvas();
+    render_radar(c, planes, range);
+    render_airports(c, g_airports, range);
+    display.push();
+}
+
 void loop() {
     uint32_t now = millis();
     bool pressed = (digitalRead(PIN_BOOT) == LOW);
     ButtonEvent ev = button.update(pressed, now);
 
-    if (ev == ButtonEvent::Long) { wifi_reset(); return; }
+    // Very-long hold: wipe config + reopen portal (fires at ~4 s while held).
+    if (ev == ButtonEvent::LongReset) { wifi_reset(); return; }
 
     if (screen == Screen::Info) {
-        if (home.valid && (ev == ButtonEvent::Short || ev == ButtonEvent::Double)) {
+        // Short press starts the radar (only meaningful when WiFi is configured).
+        if (home.valid && ev == ButtonEvent::Short) {
             screen = Screen::Radar; last_poll = 0; info_since = 0;
         }
     } else if (screen == Screen::Radar) {
         if (ev == ButtonEvent::Short) {
+            // Instant range change — data is range-independent, so just rescale
+            // and redraw the cached aircraft. No fetch, no blocking, no missed presses.
             range_idx = (range_idx + 1) % RANGE_COUNT;
-            last_poll = 0;
-        } else if (ev == ButtonEvent::Double) {
+            draw_radar();
+        } else if (ev == ButtonEvent::LongPeek) {
             screen = Screen::Info; info_since = now;
             screen_info(display.canvas(), home.ip, home.ssid, home.lat, home.lon, home.valid);
             display.push();
@@ -65,6 +79,7 @@ void loop() {
     // Auto-return from peeked info screen after 5 000 ms
     if (screen == Screen::Info && info_since && (now - info_since) > 5000) {
         screen = Screen::Radar; info_since = 0; last_poll = 0;
+        draw_radar();   // repaint immediately with current data
     }
 
     if (screen == Screen::Radar && (last_poll == 0 || now - last_poll >= POLL_INTERVAL_MS)) {
@@ -72,10 +87,7 @@ void loop() {
         float range = RANGE_PRESETS_KM[range_idx];
         auto fresh = adsb_fetch(home.lat, home.lon, range);
         if (!fresh.empty()) planes = fresh;
-        auto* c = display.canvas();
-        render_radar(c, planes, range);
-        render_airports(c, g_airports, range);
-        display.push();
+        draw_radar();
     }
 
     delay(20);

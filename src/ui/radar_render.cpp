@@ -23,13 +23,31 @@ static void draw_triangle(LGFX_Sprite* c, Point p, float track, uint16_t col) {
     c->fillTriangle(x0,y0,x1,y1,x2,y2,col);
 }
 
+// Format a ring distance compactly: whole km (e.g. "8", "17", "25"); one decimal below 10
+// only when it isn't already whole (e.g. "3.3" for a 10 km range's inner ring).
+static void ring_label(char* buf, size_t n, float km) {
+    if (km >= 10.0f || km == (float)(int)km) snprintf(buf, n, "%d", (int)(km + 0.5f));
+    else snprintf(buf, n, "%.1f", km);
+}
+
 void render_radar(LGFX_Sprite* c, const std::vector<Aircraft>& aircraft, float range_km) {
     c->fillSprite(COL_FIELD);
-    for (int r : {38, 75, 112}) c->drawCircle(120,120,r, COL_RING);
+    static const int ring_r[3] = { 38, 75, 112 };
+    for (int r : ring_r) c->drawCircle(120,120,r, COL_RING);
     c->drawFastVLine(120, 8, 224, COL_RING);
     c->drawFastHLine(8, 120, 224, COL_RING);
     c->setTextColor(COL_N); c->drawString("N", 116, 4);
     c->fillCircle(120,120,2, COL_N);
+
+    // Range label (km) on each ring, placed just inside the ring on the SE diagonal so it
+    // sits on the field (not over the crosshair) and never collides with the "N" marker.
+    c->setTextColor(COL_N);
+    for (int i = 0; i < 3; ++i) {
+        char lbl[8];
+        ring_label(lbl, sizeof(lbl), range_km * (float)(i + 1) / 3.0f);
+        int off = (int)(ring_r[i] * 0.60f);   // along the SE 45° diagonal
+        c->drawString(lbl, 120 + off, 120 + off - 4);
+    }
 
     for (const auto& a : aircraft) {
         Bucket b = classify(a);
