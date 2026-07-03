@@ -10,6 +10,7 @@ private:
     bool was_pressed_ = false;
     uint32_t press_start_ = 0;
     uint32_t last_release_ = 0;
+    uint32_t first_release_ = 0;
     int pending_clicks_ = 0;
     bool long_fired_ = false;
 };
