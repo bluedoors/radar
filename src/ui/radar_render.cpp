@@ -6,10 +6,9 @@
 
 static uint16_t bucket_colour(Bucket b) {
     switch (b) {
-        case Bucket::Commercial: return COL_COMMERC;
         case Bucket::VFR:        return COL_VFR;
         case Bucket::Helicopter: return COL_HELO;
-        default:                 return COL_UNKNOWN;
+        default:                 return COL_COMMERC;  // Commercial (grey) is the default
     }
 }
 

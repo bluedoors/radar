@@ -26,26 +26,24 @@ static const int   RANGE_COUNT = 4;
 // LovyanGFX drawing primitives take the palette INDEX as their colour argument, so
 // COL_* are indices here; RADAR_PALETTE maps each index to its real RGB565 colour and
 // is loaded into the sprite in Display::begin().
-#define COL_FIELD   0   // navy   #03121f
-#define COL_RING    1   // grid   #0a3a5c
-#define COL_N       2   // blue   #7fd4ff
-#define COL_COMMERC 3   // red    #ff3b3b
-#define COL_VFR     4   // amber  #ffcf3b
-#define COL_HELO    5   // green  #3bff8f
-#define COL_UNKNOWN 6   // grey   #7f9bb0
-#define COL_VECTOR  7   // magenta#ff5be0
-#define COL_AIRPORT 8   // cyan   #00b4c8
+#define COL_FIELD   0   // navy    #03121f
+#define COL_RING    1   // grid    #0a3a5c
+#define COL_N       2   // blue    #7fd4ff
+#define COL_COMMERC 3   // grey    #7f9bb0 — commercial + uncategorised (default bucket)
+#define COL_VFR     4   // amber   #ffcf3b
+#define COL_HELO    5   // green   #3bff8f
+#define COL_VECTOR  6   // magenta #ff5be0
+#define COL_AIRPORT 7   // cyan    #00b4c8
 
 #include <cstdint>
 static const uint16_t RADAR_PALETTE[] = {
     0x0862,  // 0 FIELD
     0x0A6B,  // 1 RING
     0x7EBF,  // 2 N
-    0xF9E7,  // 3 COMMERC
+    0x8536,  // 3 COMMERC (grey — preferred for readability)
     0xFE67,  // 4 VFR
     0x3FF1,  // 5 HELO
-    0x8536,  // 6 UNKNOWN
-    0xFAFC,  // 7 VECTOR
-    0x05B9,  // 8 AIRPORT
+    0xFAFC,  // 6 VECTOR
+    0x05B9,  // 7 AIRPORT
 };
-static const int RADAR_PALETTE_COUNT = 9;
+static const int RADAR_PALETTE_COUNT = 8;

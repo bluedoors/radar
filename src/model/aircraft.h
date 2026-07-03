@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
-enum class Bucket { Commercial, VFR, Helicopter, Unknown, Filtered };
+// Commercial is the default bucket (rendered grey) — it absorbs aircraft with no
+// ADS-B category, since near a major hub the overwhelming majority are commercial.
+enum class Bucket { Commercial, VFR, Helicopter, Filtered };
 struct Aircraft {
     float lat = 0, lon = 0;
     float track = 0;

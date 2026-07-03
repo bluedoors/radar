@@ -17,7 +17,8 @@ Bucket classify(const Aircraft& a) {
     const std::string& c = a.category;
     if (!c.empty() && (c[0] == 'B' || c[0] == 'C')) return Bucket::Filtered;
     if (c == "A7" || is_rotor_type(a.type)) return Bucket::Helicopter;
-    if (c == "A2" || c == "A3" || c == "A4" || c == "A5") return Bucket::Commercial;
     if (c == "A1" || is_light_type(a.type)) return Bucket::VFR;
-    return Bucket::Unknown;
+    // Everything else — A2-A5 AND aircraft with no/unknown category — is Commercial.
+    // Near a major hub, uncategorised traffic is almost always commercial.
+    return Bucket::Commercial;
 }
