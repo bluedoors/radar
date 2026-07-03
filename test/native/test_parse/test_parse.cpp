@@ -11,9 +11,10 @@ void test_parses_all_aircraft() {
     auto v = parse_adsb(load());
     TEST_ASSERT_EQUAL(6, (int)v.size());
 }
-void test_first_has_position_or_ground() {
+void test_first_callsign_trimmed() {
+    // Fixture's first aircraft has flight "JST037  " (trailing spaces) -> trimmed.
     auto v = parse_adsb(load());
-    TEST_ASSERT_TRUE(v[0].callsign.size() >= 0);
+    TEST_ASSERT_EQUAL_STRING("JST037", v[0].callsign.c_str());
 }
 void test_ground_flag_detected() {
     auto v = parse_adsb(R"({"aircraft":[{"flight":"X","alt_baro":"ground","lat":1,"lon":2}]})");
@@ -34,7 +35,7 @@ void test_empty_or_garbage_safe() {
 }
 int main(int,char**){
     UNITY_BEGIN();
-    RUN_TEST(test_parses_all_aircraft); RUN_TEST(test_first_has_position_or_ground);
+    RUN_TEST(test_parses_all_aircraft); RUN_TEST(test_first_callsign_trimmed);
     RUN_TEST(test_ground_flag_detected); RUN_TEST(test_numeric_alt_parsed);
     RUN_TEST(test_empty_or_garbage_safe);
     return UNITY_END();
