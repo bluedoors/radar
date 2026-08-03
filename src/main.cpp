@@ -18,8 +18,14 @@ enum class Screen { Splash, Info, Radar };
 static Screen screen = Screen::Splash;
 static ButtonFsm button;
 static HomeConfig home;
-static int range_idx = 2;               // default 25 km (RANGE_PRESETS_KM[2])
+static int range_idx = 1;               // default 10 km (RANGE_PRESETS_KM[1])
+// Info screen auto-advance: `info_since` is the millis() stamp when it was shown, and
+// `info_timeout` how long to hold it. Zero timeout = stay put until the button is pressed
+// (used when WiFi isn't configured — there's nothing to advance to).
 static uint32_t info_since = 0;
+static uint32_t info_timeout = 0;
+static constexpr uint32_t INFO_BOOT_MS = 15000;  // after power-on: long enough to read IP/SSID
+static constexpr uint32_t INFO_PEEK_MS = 5000;   // long-press peek from the radar
 static std::vector<Aircraft> planes;    // owned by the render loop (core 1)
 
 static std::vector<AirportScreen> g_airports;
@@ -71,6 +77,10 @@ void setup() {
         xTaskCreatePinnedToCore(fetch_task, "fetch", 8192, nullptr, 1, nullptr, 0);
     }
     screen = Screen::Info;
+    // Auto-advance to the radar on power-cycle so the device needs no button press. Only
+    // when WiFi is configured — otherwise the info screen *is* the useful thing to show.
+    info_since   = home.valid ? millis() : 0;
+    info_timeout = home.valid ? INFO_BOOT_MS : 0;
     screen_info(display.canvas(), home.ip, home.ssid, home.lat, home.lon, home.valid);
     display.push();
 }
@@ -107,7 +117,7 @@ void loop() {
     if (screen == Screen::Info) {
         // Short press starts the radar (only meaningful when WiFi is configured).
         if (home.valid && ev == ButtonEvent::Short) {
-            screen = Screen::Radar; info_since = 0;
+            screen = Screen::Radar; info_since = 0; info_timeout = 0;
             draw_radar();
         }
     } else if (screen == Screen::Radar) {
@@ -116,15 +126,15 @@ void loop() {
             range_idx = (range_idx + 1) % RANGE_COUNT;
             draw_radar();
         } else if (ev == ButtonEvent::LongPeek) {
-            screen = Screen::Info; info_since = now;
+            screen = Screen::Info; info_since = now; info_timeout = INFO_PEEK_MS;
             screen_info(display.canvas(), home.ip, home.ssid, home.lat, home.lon, home.valid);
             display.push();
         }
     }
 
-    // Auto-return from peeked info screen after 5 000 ms
-    if (screen == Screen::Info && info_since && (now - info_since) > 5000) {
-        screen = Screen::Radar; info_since = 0;
+    // Leave the info screen once its timeout expires (15 s after boot, 5 s after a peek).
+    if (screen == Screen::Info && info_timeout && (now - info_since) > info_timeout) {
+        screen = Screen::Radar; info_since = 0; info_timeout = 0;
         draw_radar();
     }
 
