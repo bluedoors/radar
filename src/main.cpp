@@ -13,6 +13,25 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/semphr.h>
+#include <esp_system.h>
+
+// ---- DIAGNOSTIC (temporary) ------------------------------------------------------
+// Why did we (re)boot? On a crash-loop this is the single most decisive line: it tells
+// us BROWNOUT (power) vs PANIC (exception/stack overflow) vs WDT vs a clean restart.
+static const char* reset_reason_str(esp_reset_reason_t r) {
+    switch (r) {
+        case ESP_RST_POWERON:  return "POWERON (cold boot)";
+        case ESP_RST_SW:       return "SW (ESP.restart)";
+        case ESP_RST_PANIC:    return "PANIC (exception/abort/stack-overflow)";
+        case ESP_RST_INT_WDT:  return "INT_WDT (interrupt watchdog)";
+        case ESP_RST_TASK_WDT: return "TASK_WDT (task watchdog)";
+        case ESP_RST_WDT:      return "WDT (other watchdog)";
+        case ESP_RST_BROWNOUT: return "BROWNOUT (power dip)";
+        case ESP_RST_DEEPSLEEP: return "DEEPSLEEP";
+        case ESP_RST_EXT:      return "EXT (external reset pin)";
+        default:               return "UNKNOWN";
+    }
+}
 
 enum class Screen { Splash, Info, Radar };
 static Screen screen = Screen::Splash;
@@ -45,6 +64,11 @@ static void fetch_task(void*) {
         // set covers every range the user might cycle to without needing a re-fetch.
         float fetch_km = RANGE_PRESETS_KM[RANGE_COUNT - 1];
         auto fresh = adsb_fetch(home.lat, home.lon, fetch_km);
+        // DIAGNOSTIC: stack_words_left is the tightest-ever free stack for this task.
+        // If it trends toward 0 we've found suspect #2 (TLS overflowing the 8 KB stack).
+        Serial.printf("[FETCH] n=%d stack_words_left=%u free_heap=%u min_free_ever=%u\n",
+                      (int)fresh.size(), uxTaskGetStackHighWaterMark(nullptr),
+                      ESP.getFreeHeap(), ESP.getMinFreeHeap());
         if (!fresh.empty()) {
             xSemaphoreTake(g_lock, portMAX_DELAY);
             g_shared = std::move(fresh);
@@ -57,8 +81,15 @@ static void fetch_task(void*) {
 
 void setup() {
     Serial.begin(115200);
+    delay(50);  // let USB-serial settle so the first line isn't truncated
+    // DIAGNOSTIC: report why we just booted, plus starting heap.
+    Serial.printf("\n[BOOT] reset_reason=%s  free_heap=%u  largest_block=%u\n",
+                  reset_reason_str(esp_reset_reason()),
+                  ESP.getFreeHeap(), ESP.getMaxAllocHeap());
     pinMode(PIN_BOOT, INPUT_PULLUP);
     display.begin();
+    Serial.printf("[BOOT] after display.begin: free_heap=%u  largest_block=%u\n",
+                  ESP.getFreeHeap(), ESP.getMaxAllocHeap());
     screen_splash(display.canvas());
     display.push();
     // Show setup instructions on the panel while the captive portal is open.
