@@ -1,4 +1,5 @@
 .superpowers/
 .pio/
+.pio-core/
 build/
 *.log
