@@ -105,7 +105,9 @@ void setup() {
         }
         // Start the background fetch task on core 0 (loop()/render run on core 1).
         g_lock = xSemaphoreCreateMutex();
-        xTaskCreatePinnedToCore(fetch_task, "fetch", 8192, nullptr, 1, nullptr, 0);
+        // 12 KB, not 8: mbedTLS + the JSON parser left only ~2.8 KB of headroom at 8192,
+        // which is too close for comfort on a task that runs a TLS handshake every poll.
+        xTaskCreatePinnedToCore(fetch_task, "fetch", 12288, nullptr, 1, nullptr, 0);
     }
     screen = Screen::Info;
     // Auto-advance to the radar on power-cycle so the device needs no button press. Only
