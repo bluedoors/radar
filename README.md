@@ -9,6 +9,18 @@ Inspired by [MatixYo/ESP32-Plane-Radar](https://github.com/MatixYo/ESP32-Plane-R
 adapted to the WROOM-32 (dual-core ESP32) and extended with aircraft classification by type
 and a boot-time connection-info screen.
 
+<p align="center">
+  <img src="docs/images/radar-10km.png" width="45%" alt="Radar at 10 km range: aircraft triangles coloured by class, with callsign and altitude tags">
+  &nbsp;&nbsp;
+  <img src="docs/images/radar-40km.png" width="45%" alt="The same sky at 40 km range, showing more en-route traffic">
+</p>
+<p align="center"><em>10 km and 40 km ranges. Grey = commercial, amber = VFR/GA, green = helicopter;
+magenta lines are ground-speed vectors, cyan marks airports.</em></p>
+
+These are rendered from the actual `src/ui/` render code compiled on the host against a
+small canvas shim, not mocked up — so they are pixel-accurate to the panel. Regenerate with
+`tools/render_preview/render.sh`.
+
 ## Features
 
 - Live aircraft within a selectable range, polled every 5 s.
