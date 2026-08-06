@@ -14,8 +14,10 @@
 
 // A plausible Sydney-area frame at the 10 km default range. dst_nm/dir_deg are what the
 // feed supplies, so these go through exactly the same projection path as live data.
-// Chosen to exercise every legend entry: commercial, VFR, helicopter, a tagged aircraft
-// inside ring 2, and one beyond range that degrades to a dot.
+// Kept deliberately sparse — a real busy sky is legible on the panel but turns into
+// overlapping tags in a scaled-down README image. Still covers every legend entry:
+// commercial, VFR, helicopter, one beyond range (dot, no tag) and one on the ground
+// (filtered out).
 static std::vector<Aircraft> sample_frame() {
     std::vector<Aircraft> v;
     auto add = [&](const char* cs, const char* cat, const char* type,
@@ -26,20 +28,15 @@ static std::vector<Aircraft> sample_frame() {
         a.alt_ft = alt; a.gs_knots = gs; a.on_ground = false;
         v.push_back(a);
     };
-    // Commercial (grey) — inbound and outbound on the main approach.
-    add("QFA412", "A3", "B738", 1.4f, 118.0f, 351.0f,  2400, 190.0f);
-    add("VOZ821", "A3", "A320", 2.6f, 202.0f,  16.0f,  4900, 240.0f);
-    add("JST508", "A3", "A321", 4.1f,  22.0f, 205.0f,  8200, 285.0f);
-    add("QFA1523","A2", "E190", 3.2f, 287.0f, 118.0f, 12500, 310.0f);
-    // Uncategorised — deliberately falls into the commercial bucket, not "unknown".
-    add("UAE413", "",   "",     4.6f, 124.0f, 300.0f, 21000, 340.0f);
-    // VFR / GA (amber) — light types near Bankstown, west of the centre.
-    add("VHDQP",  "A1", "C172", 2.1f, 253.0f,  74.0f,  1800,  95.0f);
-    add("VHZKL",  "",   "PA28", 3.6f, 238.0f, 160.0f,  2200, 110.0f);
+    // Commercial (grey) — one inbound on the approach, one climbing out.
+    add("QFA412", "A3", "B738", 1.6f, 112.0f, 351.0f,  2400, 190.0f);
+    add("QFA1523","A2", "E190", 3.4f, 289.0f, 118.0f, 12500, 310.0f);
+    // VFR / GA (amber) — light type west of the centre.
+    add("VHDQP",  "A1", "C172", 2.4f, 224.0f,  74.0f,  1800,  95.0f);
     // Helicopter (green) — harbour scenic, close in so it carries a tag.
     add("VHHLI",  "A7", "EC45", 1.1f,  48.0f, 258.0f,  1200,  85.0f);
     // Beyond the 10 km range: renders as a dot in the outer band, no tag.
-    add("ANZ108", "A3", "B789", 7.8f, 195.0f, 358.0f, 27000, 420.0f);
+    add("ANZ108", "A3", "B789", 7.8f, 168.0f, 358.0f, 27000, 420.0f);
     // Ground traffic — filtered out entirely, proves the filter is live.
     Aircraft g; g.callsign = "QFA9"; g.category = "A3"; g.on_ground = true;
     g.dst_nm = 0.9f; g.dir_deg = 150.0f; v.push_back(g);
@@ -59,15 +56,11 @@ static std::vector<Aircraft> wide_frame() {
         a.alt_ft = alt; a.gs_knots = gs; a.on_ground = false;
         v.push_back(a);
     };
-    add("QFA412", "A3", "B738",  3.1f, 108.0f, 351.0f,  2400, 190.0f);
-    add("VOZ821", "A3", "A320",  6.4f, 196.0f,  16.0f,  6100, 250.0f);
-    add("JST508", "A3", "A321", 11.8f,  34.0f, 205.0f, 14200, 300.0f);
-    add("QFA1523","A2", "E190",  9.1f, 296.0f, 118.0f, 12500, 310.0f);
-    add("UAE413", "",   "",     16.4f, 138.0f, 300.0f, 24000, 350.0f);
-    add("SIA221", "A3", "B77W", 19.2f,  82.0f, 262.0f, 31000, 440.0f);
-    add("VHDQP",  "A1", "C172",  8.9f, 243.0f,  74.0f,  1800,  95.0f);
-    add("VHZKL",  "",   "PA28", 13.6f, 231.0f, 160.0f,  2600, 110.0f);
-    add("VHHLI",  "A7", "EC45",  4.1f,  56.0f, 258.0f,  1200,  85.0f);
+    add("JST508", "A3", "A321", 11.8f,  38.0f, 205.0f, 14200, 300.0f);
+    add("QFA1523","A2", "E190",  9.4f, 292.0f, 118.0f, 12500, 310.0f);
+    // Uncategorised — deliberately falls into the commercial bucket, not "unknown".
+    add("UAE413", "",   "",     16.4f, 142.0f, 300.0f, 24000, 350.0f);
+    add("VHZKL",  "A1", "PA28",  8.2f, 214.0f, 160.0f,  2600, 110.0f);
     add("ANZ108", "A3", "B789", 24.6f, 189.0f, 358.0f, 29000, 430.0f);  // beyond range -> dot
     return v;
 }

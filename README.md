@@ -157,7 +157,7 @@ src/ui/radar_render.*       rings / aircraft / airport rendering
 src/ui/screens.*            splash / portal / info screens
 src/main.cpp                splash → info → radar state machine
 test/native/                Unity unit tests
-docs/superpowers/           design spec + implementation plan
+tools/render_preview/       host-side renderer for the README screenshots
 ```
 
 ## Memory Notes
