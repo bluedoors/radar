@@ -114,6 +114,13 @@ pio test -e native
 If WiFi was never configured, the info screen shows "No WiFi / hold BOOT to setup" and stays
 put rather than advancing.
 
+> **Security note:** the `PlaneRadar-setup` hotspot is open (no password) and has no timeout —
+> it stays up until setup completes. While it is up, anyone in WiFi range can join it, change
+> the WiFi and location settings, or upload firmware through the portal's update page. This
+> is the usual trade-off for devices that host their own setup hotspot, and it only applies
+> in setup mode (first boot, or after an 8 s BOOT hold). Finish setup promptly, somewhere
+> you trust.
+
 ## Button Gestures (BOOT / GPIO0)
 
 There is no double-press gesture; the three events are distinguished purely by hold duration.
